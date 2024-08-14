@@ -2,87 +2,75 @@
 #include <nvs_flash.h>
 #include <nvs.h>
 
-class NvsHandle
-{
-public:
-    nvs_handle_t handle;
-    esp_err_t err;
+#include "storage.hpp"
+#include "error.hpp"
 
-    NvsHandle()
+Storage::Storage()
+{
+    hasChanges = false;
+    handle = 0;
+    auto err = nvs_flash_init();
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND)
     {
-        handle = 0;
+        // NVS partition was truncated and needs to be erased
+        // Retry nvs_flash_init
         err = nvs_flash_init();
-        if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND)
-        {
-            // NVS partition was truncated and needs to be erased
-            // Retry nvs_flash_init
-            err = nvs_flash_init();
-        }
-        err = nvs_open("storage", NVS_READWRITE, &handle);
     }
 
-    ~NvsHandle()
-    {
-        if (handle != 0)
-        {
-            nvs_close(handle);
-        }
-    }
-};
+    checkError(err, "Initializing flash");
+    err = nvs_open("storage", NVS_READWRITE, &handle);
+    checkError(err, "Opening storage");
+}
 
-String load_string(const char *key, const char *defaultValue)
+Storage::~Storage()
 {
-    NvsHandle storage_handle;
-    if (storage_handle.err != ESP_OK)
+    if (hasChanges)
     {
-        printf("Error (%s) opening NVS handle!\n", esp_err_to_name(storage_handle.err));
-        return defaultValue;
+        auto err = nvs_commit(handle);
+        checkError(err, "Commiting changes");
     }
 
-    esp_err_t err;
-
-    size_t length;
-    err = nvs_get_str(storage_handle.handle, key, NULL, &length);
-    switch (err)
+    if (handle != 0)
     {
-    case ESP_OK:
-        break;
-    case ESP_ERR_NVS_NOT_FOUND:
-        return defaultValue;
-    default:
-        printf("Error (%s) reading!\n", esp_err_to_name(err));
-        return defaultValue;
-    }
-
-    char result[length];
-    err = nvs_get_str(storage_handle.handle, key, result, &length);
-    switch (err)
-    {
-    case ESP_OK:
-        return result;
-    case ESP_ERR_NVS_NOT_FOUND:
-        return defaultValue;
-    default:
-        printf("Error (%s) reading!\n", esp_err_to_name(err));
-        return defaultValue;
+        nvs_close(handle);
+        handle = 0;
     }
 }
 
-void save_string(const char *key, const char *value)
+void Storage::checkError(esp_err_t err, const char *message)
 {
-    NvsHandle storage_handle;
-    if (storage_handle.err != ESP_OK)
+    if (err != ESP_OK)
     {
-        printf("Error (%s) opening NVS handle!\n", esp_err_to_name(storage_handle.err));
-        return;
+        auto msg = (String(message) + " (ErrorName: " + esp_err_to_name(err) + ")").c_str();
+        throw ErrorStorage(msg);
     }
+}
 
-    esp_err_t err;
-    err = nvs_set_str(storage_handle.handle, key, value);
+String Storage::getString(const char *key)
+{
+    return getString(key, "");
+}
 
-    ESP_ERROR_CHECK(err);
+String Storage::getString(const char *key, const char *defaultValue)
+{
+    size_t length;
+    auto err = nvs_get_str(handle, key, NULL, &length);
 
-    err = nvs_commit(storage_handle.handle);
+    if (err == ESP_ERR_NVS_NOT_FOUND)
+        return defaultValue;
 
-    ESP_ERROR_CHECK(err);
+    checkError(err, "Getting string size");
+
+    char result[length];
+    err = nvs_get_str(handle, key, result, &length);
+    checkError(err, "Getting string value");
+
+    return result;
+}
+
+void Storage::setString(const char *key, const char *value)
+{
+    auto err = nvs_set_str(handle, key, value);
+    checkError(err, "Setting string");
+    hasChanges = true;
 }

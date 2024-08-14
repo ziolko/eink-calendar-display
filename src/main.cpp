@@ -3,13 +3,14 @@
 #include <ArduinoJson.h>
 #include <Inkplate.h>
 
-#include "storage.h"
-#include "network.h"
+#include "error.hpp"
+#include "storage.hpp"
+#include "roombelt_api.hpp"
 
 Inkplate display(INKPLATE_1BIT);
 
 void displayDevice(DeviceState &device);
-void displayStatusCode(DeviceState &device);
+void displayConnectionCode(DeviceState &device);
 
 void setup()
 {
@@ -21,51 +22,51 @@ void setup()
     display.setTextSize(4);
     display.print("Welcome to Roombelt!!");
     display.display();
-
-    init_wifi();
 }
 
 void loop()
 {
-    // Max key length with null terminator - 16
-    char TOKEN_STORAGE_KEY[16] = "token";
-
-    Serial.println("LOOP");
-
-    delay(1000);
-    Serial.println("Get token");
-
-    String token = load_string(TOKEN_STORAGE_KEY, "session-key");
-    Serial.println("token: " + token);
-
-    delay(1000);
-    DeviceState device = get_device_state(token);
-    Serial.println("\nGet device done");
-
-    if (device.needsNewConnectionCode())
+    try
     {
-        token = create_session_token();
-        save_string(TOKEN_STORAGE_KEY, token.c_str());
-        device = get_device_state(token);
+        RoombeltApi api;
+
+        auto device = api.getDeviceState();
+        auto state = device.getState();
+
+        if (state == StateInfo::DEVICE_REMOVED || state == StateInfo::MISSING_SESSION_ID)
+        {
+            api.removeDevice();
+            api.registerNewDevice();
+            device = api.getDeviceState();
+            state = device.getState();
+        }
+
+        if (state == StateInfo::SUCCESS)
+        {
+            displayDevice(device);
+        }
+        else if (state == StateInfo::CONNECTION_CODE)
+        {
+            displayConnectionCode(device);
+        }
+        else
+        {
+            display.clearDisplay();
+
+            display.setCursor(10, 10);
+            display.setTextSize(6);
+            display.printf(state == StateInfo::ROOMBELT_ERROR ? device.getError().c_str() : " Network error");
+
+            display.display();
+        }
     }
-
-    if (device.isConnected())
+    catch (Error error)
     {
-        displayDevice(device);
-    }
-    else if (device.getConnectionCode().length() > 0)
-    {
-        displayStatusCode(device);
-    }
-    else
-    {
-        Serial.println("isNetworkError");
-
         display.clearDisplay();
 
         display.setCursor(10, 10);
         display.setTextSize(6);
-        display.printf("Network error");
+        display.printf(("Error while loading data: " + String(error.message)).c_str());
 
         display.display();
     }
@@ -73,7 +74,7 @@ void loop()
     delay(30000);
 }
 
-void displayStatusCode(DeviceState &device)
+void displayConnectionCode(DeviceState &device)
 {
     display.clearDisplay();
 
@@ -92,17 +93,17 @@ void displayDevice(DeviceState &device)
 
     String currentSummary, currentTime, currentHost;
     String nextSummary, nextTime;
-    String status = device.getStatus();
-    String name = device.getName();
+    String status = device.getRoomStatus();
+    String name = device.getRoomName();
 
-    if (!current.is_empty)
+    if (current.is_defined)
     {
         currentSummary = current.summary;
         currentTime = current.startTime + " - " + current.endTime;
         currentHost = "Hosted by " + current.host;
     }
 
-    if (!next.is_empty)
+    if (next.is_defined)
     {
         nextSummary = "Next: " + next.summary;
         nextTime = next.startTime + " - " + next.endTime;
@@ -121,7 +122,7 @@ void displayDevice(DeviceState &device)
     display.setTextSize(7);
     display.print(status);
 
-    if (!current.is_empty)
+    if (current.is_defined)
     {
         display.setTextSize(4);
         display.setCursor(10, 160);
@@ -132,7 +133,7 @@ void displayDevice(DeviceState &device)
         display.print(currentHost);
     }
 
-    if (!next.is_empty)
+    if (next.is_defined)
     {
         display.setTextSize(4);
         display.setCursor(10, 300);

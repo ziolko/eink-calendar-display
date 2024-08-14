@@ -6,7 +6,7 @@
 class MeetingData
 {
 public:
-    bool is_empty;
+    bool is_defined;
     String summary;
     String host;
     String startTime, endTime;
@@ -14,18 +14,29 @@ public:
     MeetingData(const JsonVariant &meeting);
 };
 
+enum StateInfo
+{
+    UNKNOWN,
+    MISSING_SESSION_ID,
+    CONNECTION_CODE,
+    DEVICE_REMOVED,
+    NETWORK_ERROR,
+    ROOMBELT_ERROR,
+    SUCCESS,
+};
+
 class DeviceState
 {
 public:
     DeviceState(int status_code, const JsonDocument &response);
+    StateInfo getState();
 
-    bool isNetworkError();
-    bool isConnected();
-    bool needsNewConnectionCode();
     String getConnectionCode();
-    String getName();
+    String getError();
+
     String getTime();
-    String getStatus();
+    String getRoomName();
+    String getRoomStatus();
     MeetingData getCurrentMeeting();
     MeetingData getNextMeeting();
 

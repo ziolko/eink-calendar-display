@@ -1,4 +1,4 @@
-#include "device_state.h"
+#include "device_state.hpp"
 
 DeviceState::DeviceState(int status_code, const JsonDocument &response)
 {
@@ -6,19 +6,22 @@ DeviceState::DeviceState(int status_code, const JsonDocument &response)
     this->response = response;
 }
 
-bool DeviceState::isNetworkError()
+StateInfo DeviceState::getState()
 {
-    return status_code != 200 && status_code != 403 && status_code != 418;
-}
+    if (status_code == 0)
+        return StateInfo::NETWORK_ERROR;
+    if (status_code == 403)
+        return StateInfo::MISSING_SESSION_ID;
+    if (status_code == 418)
+        return StateInfo::DEVICE_REMOVED;
+    if (status_code == 200 && !response["time"].isNull())
+        return StateInfo::SUCCESS;
+    if (status_code == 200 && !response["connectionCode"].isNull())
+        return StateInfo::CONNECTION_CODE;
+    if (status_code == 200 && !response["error"].isNull())
+        return StateInfo::ROOMBELT_ERROR;
 
-bool DeviceState::isConnected()
-{
-    return status_code == 200 && !response.isNull() && !response["time"].isNull();
-}
-
-bool DeviceState::needsNewConnectionCode()
-{
-    return status_code == 403 || status_code == 418;
+    return StateInfo::UNKNOWN;
 }
 
 String DeviceState::getConnectionCode()
@@ -28,41 +31,43 @@ String DeviceState::getConnectionCode()
                : response["connectionCode"];
 }
 
-String DeviceState::getName()
+String DeviceState::getError()
 {
-    assert(isConnected());
+    return (response.isNull() || response["error"].isNull())
+               ? String("")
+               : response["error"];
+}
+
+String DeviceState::getRoomName()
+{
     return response["name"].as<String>();
 }
 
 String DeviceState::getTime()
 {
-    assert(isConnected());
     return response["time"].as<String>();
 }
 
-String DeviceState::getStatus()
+String DeviceState::getRoomStatus()
 {
-    assert(isConnected());
     return response["status"].as<String>();
 }
 
 MeetingData DeviceState::getCurrentMeeting()
 {
-    assert(isConnected());
     return MeetingData(response["current"].as<JsonVariant>());
 }
 
 MeetingData DeviceState::getNextMeeting()
 {
-    assert(isConnected());
     return MeetingData(response["next"].as<JsonVariant>());
 }
 
 MeetingData::MeetingData(const JsonVariant &meeting)
 {
-    is_empty = meeting.isNull();
+    is_defined = !meeting.isNull();
 
-    if (!is_empty)
+    if (is_defined)
     {
         summary = meeting["summary"].as<String>();
         host = meeting["host"].as<String>();
