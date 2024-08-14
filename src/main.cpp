@@ -1,135 +1,145 @@
 #include <stdlib.h>
-#include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
+#include <Inkplate.h>
 
-#include "Inkplate.h"
-
-JsonDocument getDeviceState();
-void initWiFi();
+#include "storage.h"
+#include "network.h"
 
 Inkplate display(INKPLATE_1BIT);
 
+void displayDevice(DeviceState &device);
+void displayStatusCode(DeviceState &device);
+
 void setup()
 {
+    Serial.begin(115200);
     display.begin();
     display.clearDisplay();
     display.setTextColor(BLACK, WHITE);
     display.setCursor(150, 320);
     display.setTextSize(4);
-    display.print("Welcome to Roombelt!");
-    display.display(); // Write hello message
-    initWiFi();
+    display.print("Welcome to Roombelt!!");
+    display.display();
+
+    init_wifi();
 }
 
 void loop()
 {
-    JsonDocument device = getDeviceState();
+    // Max key length with null terminator - 16
+    char TOKEN_STORAGE_KEY[16] = "token";
+
+    Serial.println("LOOP");
+
+    delay(1000);
+    Serial.println("Get token");
+
+    String token = load_string(TOKEN_STORAGE_KEY, "session-key");
+    Serial.println("token: " + token);
+
+    delay(1000);
+    DeviceState device = get_device_state(token);
     Serial.println("\nGet device done");
 
-    static String lastValues;
+    if (device.needsNewConnectionCode())
+    {
+        token = create_session_token();
+        save_string(TOKEN_STORAGE_KEY, token.c_str());
+        device = get_device_state(token);
+    }
+
+    if (device.isConnected())
+    {
+        displayDevice(device);
+    }
+    else if (device.getConnectionCode().length() > 0)
+    {
+        displayStatusCode(device);
+    }
+    else
+    {
+        Serial.println("isNetworkError");
+
+        display.clearDisplay();
+
+        display.setCursor(10, 10);
+        display.setTextSize(6);
+        display.printf("Network error");
+
+        display.display();
+    }
+
+    delay(30000);
+}
+
+void displayStatusCode(DeviceState &device)
+{
+    display.clearDisplay();
+
+    display.setCursor(10, 10);
+    display.setTextSize(6);
+
+    display.println("Code: " + device.getConnectionCode());
+
+    display.display();
+}
+
+void displayDevice(DeviceState &device)
+{
+    MeetingData current = device.getCurrentMeeting();
+    MeetingData next = device.getNextMeeting();
 
     String currentSummary, currentTime, currentHost;
     String nextSummary, nextTime;
-    String status = device["status"].as<String>();
+    String status = device.getStatus();
+    String name = device.getName();
 
-    if (!device["current"].isNull())
+    if (!current.is_empty)
     {
-        currentSummary = device["current"]["summary"].as<String>();
-        currentTime = device["current"]["start"].as<String>() + " - " + device["current"]["end"].as<String>();
-        currentHost = "Hosted by " + device["current"]["host"].as<String>();
+        currentSummary = current.summary;
+        currentTime = current.startTime + " - " + current.endTime;
+        currentHost = "Hosted by " + current.host;
     }
 
-    if (!device["next"].isNull())
+    if (!next.is_empty)
     {
-        nextSummary = "Next: " + device["next"]["summary"].as<String>();
-        nextTime = device["next"]["start"].as<String>() + " - " + device["next"]["end"].as<String>();
+        nextSummary = "Next: " + next.summary;
+        nextTime = next.startTime + " - " + next.endTime;
     }
 
     display.clearDisplay();
 
     display.setCursor(10, 10);
     display.setTextSize(6);
-    display.print(status);
+    display.print(name);
 
     display.setCursor(600, 10);
-    display.print(device["time"].as<String>());
+    display.print(device.getTime());
 
-    if (!device["current"].isNull())
+    display.setCursor(10, 80);
+    display.setTextSize(7);
+    display.print(status);
+
+    if (!current.is_empty)
     {
         display.setTextSize(4);
-        display.setCursor(10, 80);
-        display.print(currentSummary);
-        display.setCursor(10, 120);
-        display.print(currentTime);
         display.setCursor(10, 160);
+        display.print(currentSummary);
+        display.setCursor(10, 200);
+        display.print(currentTime);
+        display.setCursor(10, 240);
         display.print(currentHost);
     }
 
-    if (!device["next"].isNull())
+    if (!next.is_empty)
     {
-        display.setCursor(10, 220);
+        display.setTextSize(4);
+        display.setCursor(10, 300);
         display.print(nextSummary);
-        display.setCursor(10, 260);
+        display.setCursor(10, 340);
         display.print(nextTime);
     }
 
     display.display();
-
-    delay(30000);
-}
-
-void initWiFi()
-{
-    Serial.begin(115200);
-    delay(1000);
-
-    WiFi.mode(WIFI_STA); // Optional
-    WiFi.begin("WIFI_SSID", "WIFI_PASSWORD");
-    Serial.println("\nConnecting");
-
-    while (WiFi.status() != WL_CONNECTED)
-    {
-        Serial.print(".");
-        delay(100);
-    }
-
-    Serial.println("\nConnected to the WiFi network");
-    Serial.print("Local ESP32 IP: ");
-    Serial.println(WiFi.localIP());
-}
-
-JsonDocument getDeviceState()
-{
-    HTTPClient http;
-    String serverPath = "https://app.roombelt.com/api/device/summary";
-    http.begin(serverPath.c_str());
-    http.addHeader("Cookie", "deviceSessionToken=todo;");
-    int httpResponseCode = http.GET();
-
-    if (httpResponseCode > 0)
-    {
-        Serial.print("HTTP Response code: ");
-        Serial.println(httpResponseCode);
-        String response = http.getString();
-        Serial.println(response);
-        JsonDocument deviceState;
-        deserializeJson(deviceState, response);
-        http.end();
-        return deviceState;
-    }
-    else
-    {
-        http.end();
-        JsonDocument emptyResult;
-        return emptyResult;
-    }
-}
-
-// Small function that will write on the screen what function is currently in demonstration.
-void displayCurrentAction(String text)
-{
-    display.setTextSize(2);
-    display.setCursor(2, 580);
-    display.print(text);
 }
