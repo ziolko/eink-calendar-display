@@ -66,7 +66,10 @@ void loop()
 
         display.setCursor(10, 10);
         display.setTextSize(6);
-        display.printf(("Error while loading data: " + String(error.message)).c_str());
+
+        auto message = "Error while loading data: " + String(error.message);
+        Serial.println(message.c_str());
+        display.println(message.c_str());
 
         display.display();
     }

@@ -2,14 +2,13 @@
 
 #include <Arduino.h>
 
-typedef unsigned int ErrorCode;
-
 class Error
 {
 public:
     explicit Error(const char *message);
+    explicit Error(const String &message);
     explicit Error(const StringSumHelper &message);
-    const char *message;
+    String message;
 };
 
 class ErrorWifiConnection : public Error

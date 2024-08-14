@@ -32,8 +32,7 @@ RoombeltApi::RoombeltApi()
     if (WiFi.status() != WL_CONNECTED)
     {
         Serial.print("Unable to connect to Wifi. Status: " + WiFi.status());
-        String message = "Unable to connect to Wifi. Status: " + String(WiFi.status());
-        throw ErrorWifiConnection(message);
+        throw ErrorWifiConnection("Unable to connect to Wifi. Status: " + String(WiFi.status()));
     }
 
     Serial.println("\nConnected to the WiFi network");

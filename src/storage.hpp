@@ -16,4 +16,5 @@ private:
     nvs_handle_t handle;
     bool hasChanges;
     void checkError(esp_err_t err, const char *message);
+    void checkError(esp_err_t err, const StringSumHelper &message);
 };

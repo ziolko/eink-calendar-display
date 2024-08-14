@@ -2,6 +2,11 @@
 
 Error::Error(const char *message)
 {
+    this->message = String(message);
+}
+
+Error::Error(const String &message)
+{
     this->message = message;
 }
 

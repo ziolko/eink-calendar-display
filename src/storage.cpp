@@ -1,7 +1,6 @@
 #include <Arduino.h>
 #include <nvs_flash.h>
 #include <nvs.h>
-
 #include "storage.hpp"
 #include "error.hpp"
 
@@ -37,12 +36,16 @@ Storage::~Storage()
     }
 }
 
+void Storage::checkError(esp_err_t err, const StringSumHelper &message)
+{
+    return checkError(err, message.c_str());
+}
+
 void Storage::checkError(esp_err_t err, const char *message)
 {
     if (err != ESP_OK)
     {
-        auto msg = (String(message) + " (ErrorName: " + esp_err_to_name(err) + ")").c_str();
-        throw ErrorStorage(msg);
+        throw ErrorStorage(String(message) + " (ErrorName: " + esp_err_to_name(err) + ")");
     }
 }
 
@@ -59,11 +62,11 @@ String Storage::getString(const char *key, const char *defaultValue)
     if (err == ESP_ERR_NVS_NOT_FOUND)
         return defaultValue;
 
-    checkError(err, "Getting string size");
+    checkError(err, String("Getting string size for ") + key);
 
     char result[length];
     err = nvs_get_str(handle, key, result, &length);
-    checkError(err, "Getting string value");
+    checkError(err, String("Getting string value for ") + key);
 
     return result;
 }
