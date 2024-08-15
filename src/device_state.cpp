@@ -1,3 +1,7 @@
+#include <stdlib.h>
+#include <Crypto.h>
+#include <ArduinoJson.h>
+
 #include "device_state.hpp"
 
 DeviceState::DeviceState(int status_code, const JsonDocument &response)
@@ -6,7 +10,7 @@ DeviceState::DeviceState(int status_code, const JsonDocument &response)
     this->response = response;
 }
 
-StateInfo DeviceState::getState()
+StateInfo DeviceState::getState() const
 {
     if (status_code == 0)
         return StateInfo::NETWORK_ERROR;
@@ -24,46 +28,46 @@ StateInfo DeviceState::getState()
     return StateInfo::UNKNOWN;
 }
 
-String DeviceState::getConnectionCode()
+String DeviceState::getConnectionCode() const
 {
     return (response.isNull() || response["connectionCode"].isNull())
                ? String("")
                : response["connectionCode"];
 }
 
-String DeviceState::getError()
+String DeviceState::getError() const
 {
     return (response.isNull() || response["error"].isNull())
                ? String("")
                : response["error"];
 }
 
-String DeviceState::getRoomName()
+String DeviceState::getRoomName() const
 {
     return response["name"].as<String>();
 }
 
-String DeviceState::getTime()
+String DeviceState::getTime() const
 {
     return response["time"].as<String>();
 }
 
-String DeviceState::getRoomStatus()
+MeetingData DeviceState::getCurrentMeeting() const
 {
-    return response["status"].as<String>();
+    return MeetingData(response["current"]);
 }
 
-MeetingData DeviceState::getCurrentMeeting()
+MeetingData DeviceState::getNextMeeting() const
 {
-    return MeetingData(response["current"].as<JsonVariant>());
+    return MeetingData(response["next"]);
 }
 
-MeetingData DeviceState::getNextMeeting()
+bool DeviceState::isOccupied() const
 {
-    return MeetingData(response["next"].as<JsonVariant>());
+    return !response["current"].isNull();
 }
 
-MeetingData::MeetingData(const JsonVariant &meeting)
+MeetingData::MeetingData(const JsonVariantConst &meeting)
 {
     is_defined = !meeting.isNull();
 
@@ -78,4 +82,41 @@ MeetingData::MeetingData(const JsonVariant &meeting)
         start_timestamp = meeting["startTimestamp"];
         end_timestamp = meeting["endTimestamp"];
     }
+}
+
+#define HASH_SIZE 32
+RTC_DATA_ATTR byte lastStateHash[HASH_SIZE];
+
+bool DeviceStateHash::isEqualStoredHash(const DeviceState &state)
+{
+    byte hash[HASH_SIZE];
+    computeHash(state, hash);
+
+    for (int i = 0; i < HASH_SIZE; i++)
+        if (hash[i] != lastStateHash[i])
+            return false;
+
+    return true;
+}
+
+void DeviceStateHash::storeHash(const DeviceState &state)
+{
+    computeHash(state, lastStateHash);
+}
+
+void DeviceStateHash::computeHash(const DeviceState &state, byte *result) const
+{
+    SHA256 hasher;
+    String str;
+
+    str += state.getState() + state.getTime() + state.getError() + state.getRoomName() + state.getConnectionCode();
+
+    MeetingData current = state.getCurrentMeeting();
+    str += current.summary + current.startTime + current.endTime + current.host;
+
+    MeetingData next = state.getNextMeeting();
+    str += next.summary + next.startTime + next.endTime;
+
+    hasher.doUpdate(str.c_str());
+    hasher.doFinal(result);
 }

@@ -81,7 +81,7 @@ void RoombeltApi::registerNewDevice()
     throw ErrorHttp("No session token header in the respones while creating session token");
 }
 
-DeviceState RoombeltApi::getDeviceState()
+DeviceState RoombeltApi::getDeviceState(int retryCount)
 {
     assertWiFi();
 
@@ -102,6 +102,14 @@ DeviceState RoombeltApi::getDeviceState()
         deserializeJson(deviceState, response);
     }
     http.end();
+
+    // Retry in case of e.g. network glitch
+    if (httpResponseCode != 200 && httpResponseCode != 403 && httpResponseCode != 418 && retryCount > 0)
+    {
+        delay(500);
+        return getDeviceState(retryCount - 1);
+    }
+
     return DeviceState(httpResponseCode, deviceState);
 }
 

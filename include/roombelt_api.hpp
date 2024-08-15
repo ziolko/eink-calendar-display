@@ -10,7 +10,7 @@ public:
 
     void removeDevice();
     void registerNewDevice();
-    DeviceState getDeviceState();
+    DeviceState getDeviceState(int retryCount = 3);
 
 private:
     String getSessionToken();

@@ -11,7 +11,7 @@ public:
     String host;
     String startTime, endTime;
     unsigned int start_timestamp, end_timestamp;
-    MeetingData(const JsonVariant &meeting);
+    MeetingData(const JsonVariantConst &meeting);
 };
 
 enum StateInfo
@@ -29,18 +29,29 @@ class DeviceState
 {
 public:
     DeviceState(int status_code, const JsonDocument &response);
-    StateInfo getState();
+    StateInfo getState() const;
 
-    String getConnectionCode();
-    String getError();
+    String getConnectionCode() const;
+    String getError() const;
 
-    String getTime();
-    String getRoomName();
-    String getRoomStatus();
-    MeetingData getCurrentMeeting();
-    MeetingData getNextMeeting();
+    String getTime() const;
+    String getRoomName() const;
+    MeetingData getCurrentMeeting() const;
+    MeetingData getNextMeeting() const;
+
+    bool isOccupied() const;
 
 private:
     int status_code;
     JsonDocument response;
+};
+
+class DeviceStateHash
+{
+public:
+    bool isEqualStoredHash(const DeviceState &state);
+    void storeHash(const DeviceState &state);
+
+private:
+    void computeHash(const DeviceState &state, byte *result) const;
 };

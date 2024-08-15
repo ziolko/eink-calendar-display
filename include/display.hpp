@@ -1,0 +1,46 @@
+#pragma once
+
+#include "error.hpp"
+#include "device_state.hpp"
+
+enum Font
+{
+    ROBOTO_16 = 16,
+    ROBOTO_24 = 24,
+    ROBOTO_36 = 36,
+    ROBOTO_48 = 48,
+    ROBOTO_64 = 64,
+};
+
+enum TextAlign
+{
+    LEFT = 0,
+    RIGHT,
+    CENTER,
+};
+
+class Display
+{
+public:
+    Display();
+    ~Display();
+
+    void showErrorScreen(const Error &error);
+    void showDeviceScreen(const DeviceState &deviceState);
+    void showConnectionCodeScreen(const DeviceState &deviceState);
+    void showMessageScreen(const String &message, bool partialUpdate = false);
+    void showMessageScreen(const String &message, const String &secondaryMessage, bool partialUpdate = false);
+
+private:
+    bool hasChanges;
+    static int partialUpdateCount;
+
+    void printCurrentMeeting(const DeviceState &deviceState);
+    void printNextMeeting(const DeviceState &deviceState);
+
+    void printOnCenter(const String &text, Font font);
+    void print(const String &text, uint x, uint y, Font font = Font::ROBOTO_24, TextAlign textAlign = TextAlign::LEFT);
+
+    void setCurrentFont(Font font);
+    void commit(bool partialUpdate = false);
+};
