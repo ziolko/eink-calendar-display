@@ -62,9 +62,19 @@ MeetingData DeviceState::getNextMeeting() const
     return MeetingData(response["next"]);
 }
 
+int DeviceState::getMsToNextRefresh() const
+{
+    return response["msToNextRefresh"].isNull() ? 0 : response["msToNextRefresh"];
+}
+
 bool DeviceState::isOccupied() const
 {
     return !response["current"].isNull();
+}
+
+bool DeviceState::isEnergySaving() const
+{
+    return response["current"].isNull() ? false : response["current"];
 }
 
 MeetingData::MeetingData(const JsonVariantConst &meeting)
@@ -109,7 +119,7 @@ void DeviceStateHash::computeHash(const DeviceState &state, byte *result) const
     SHA256 hasher;
     String str;
 
-    str += state.getState() + state.getTime() + state.getError() + state.getRoomName() + state.getConnectionCode();
+    str += state.getState() + state.getError() + state.getRoomName() + state.getConnectionCode();
 
     MeetingData current = state.getCurrentMeeting();
     str += current.summary + current.startTime + current.endTime + current.host;

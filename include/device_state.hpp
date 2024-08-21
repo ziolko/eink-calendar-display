@@ -39,7 +39,9 @@ public:
     MeetingData getCurrentMeeting() const;
     MeetingData getNextMeeting() const;
 
+    int getMsToNextRefresh() const;
     bool isOccupied() const;
+    bool isEnergySaving() const;
 
 private:
     int status_code;

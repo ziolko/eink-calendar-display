@@ -8,24 +8,20 @@
 #include "roombelt_api.hpp"
 #include "display.hpp"
 
-#define uS_TO_S_FACTOR 1000000
-
 void showWelcomeView(Display &display)
 {
     display.showMessageScreen("Welcome");
     sleep(2);
-    display.showMessageScreen("Connecting to WiFi...", true);
+    display.showMessageScreen("Connecting to WiFi...");
     RoombeltApi api;
     sleep(2);
-    display.showMessageScreen("Connecting to Roombelt...", true);
+    display.showMessageScreen("Connecting to Roombelt...");
     sleep(2);
 }
 
-void showDeviceView(Display &display)
+DeviceState getDeviceState()
 {
     RoombeltApi api;
-    DeviceStateHash hash;
-
     auto device = api.getDeviceState();
 
     if (device.getState() == StateInfo::DEVICE_REMOVED || device.getState() == StateInfo::MISSING_SESSION_ID)
@@ -35,9 +31,18 @@ void showDeviceView(Display &display)
         device = api.getDeviceState();
     }
 
-    // Exit early if there's no need to update screen
+    return device;
+}
+
+void showDeviceView(Display &display, DeviceState &device)
+{
+    DeviceStateHash hash;
+
+    // Update screen only if data changed
     if (hash.isEqualStoredHash(device))
+    {
         return;
+    }
 
     hash.storeHash(device);
 
@@ -58,21 +63,35 @@ void setup()
 {
     Serial.begin(115200);
     Display display;
+    int sleepTimeMs = -1;
 
     try
     {
         if (esp_sleep_get_wakeup_cause() != ESP_SLEEP_WAKEUP_TIMER)
             showWelcomeView(display);
 
-        showDeviceView(display);
+        auto device = getDeviceState();
+        sleepTimeMs = device.getMsToNextRefresh();
+
+        if (device.isEnergySaving())
+            display.showRandomImage();
+        else
+            showDeviceView(display, device);
     }
     catch (Error error)
     {
         display.showErrorScreen(error);
     }
 
-    esp_sleep_enable_timer_wakeup(5 * uS_TO_S_FACTOR);
-    esp_deep_sleep_start();
+    int ONE_MINUTE = 60 * 1000;
+    int FIVE_MINUTES = 5 * ONE_MINUTE;
+
+    if (sleepTimeMs <= 0)
+        sleepTimeMs = ONE_MINUTE;
+    else if (sleepTimeMs > FIVE_MINUTES)
+        sleepTimeMs = FIVE_MINUTES;
+
+    display.deepSleep(sleepTimeMs);
 }
 
 void loop()

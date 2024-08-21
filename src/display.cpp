@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <Inkplate.h>
+#include <SdFat.h>
 
 #include "display.hpp"
 
@@ -9,9 +10,9 @@
 #include "fonts/roboto_48.h"
 #include "fonts/roboto_64.h"
 
-Inkplate display(INKPLATE_1BIT);
+#define uS_TO_mS_FACTOR 1000
 
-int Display::partialUpdateCount = 0;
+Inkplate display(INKPLATE_3BIT);
 
 Display::Display()
 {
@@ -27,19 +28,74 @@ Display::~Display()
     commit();
 }
 
+void Display::deepSleep(uint sleepTimeMs)
+{
+    if (display.getSdCardOk())
+    {
+        display.sdCardSleep();
+    }
+
+    esp_sleep_enable_timer_wakeup(sleepTimeMs * uS_TO_mS_FACTOR);
+    esp_deep_sleep_start();
+}
+
+void Display::showImage(const String &fileName)
+{
+    if (!display.getSdCardOk())
+    {
+        display.sdCardInit();
+    }
+
+    display.drawImage(fileName, 0, 0);
+    hasChanges = true;
+    commit();
+}
+
+void Display::showRandomImage()
+{
+    if (!display.getSdCardOk())
+    {
+        display.sdCardInit();
+    }
+    SdFile root, file;
+
+    std::vector<String> files;
+    char fileNameBuffer[100];
+    root.open("/");
+
+    // TODO - handle errors
+    while (file.openNext(&root, O_RDONLY))
+    {
+
+        // TODO - handle errors
+        file.getName(fileNameBuffer, 100);
+        file.close();
+        if (String(fileNameBuffer).endsWith(".bmp"))
+        {
+            files.push_back(fileNameBuffer);
+        }
+    }
+    root.close();
+
+    if (files.size() > 0)
+    {
+        showImage(files.at(random(files.size())));
+    }
+}
+
 void Display::showErrorScreen(const Error &error)
 {
     printOnCenter("Unhandled error: " + error.message, Font::ROBOTO_48);
     commit();
 }
 
-void Display::showMessageScreen(const String &message, bool partialUpdate)
+void Display::showMessageScreen(const String &message)
 {
     printOnCenter(message, Font::ROBOTO_48);
-    commit(partialUpdate);
+    commit();
 }
 
-void Display::showMessageScreen(const String &message, const String &secondaryMessage, bool partialUpdate)
+void Display::showMessageScreen(const String &message, const String &secondaryMessage)
 {
     auto primaryFont = Font::ROBOTO_48;
     auto secondaryFont = Font::ROBOTO_36;
@@ -66,7 +122,7 @@ void Display::showMessageScreen(const String &message, const String &secondaryMe
     display.print(secondaryMessage);
 
     hasChanges = true;
-    commit(partialUpdate);
+    commit();
 }
 
 void Display::setCurrentFont(Font font)
@@ -119,24 +175,14 @@ void Display::print(const String &text, uint x, uint y, Font font, TextAlign tex
     hasChanges = true;
 }
 
-void Display::commit(bool partialUpdate)
+void Display::commit()
 {
     if (!hasChanges)
     {
         return;
     }
 
-    if (partialUpdate && Display::partialUpdateCount < 10)
-    {
-        display.partialUpdate();
-        Display::partialUpdateCount += 1;
-    }
-    else
-    {
-        display.display();
-        Display::partialUpdateCount = 0;
-    }
-
+    display.display();
     display.clearDisplay();
     hasChanges = false;
 }
@@ -144,7 +190,7 @@ void Display::commit(bool partialUpdate)
 void Display::showDeviceScreen(const DeviceState &device)
 {
     print(device.getRoomName(), 10, 10, Font::ROBOTO_48);
-    print(device.getTime(), 10, 10, Font::ROBOTO_48, TextAlign::RIGHT);
+    print(String(display.readBattery()) + "V", 10, 10, Font::ROBOTO_24, TextAlign::RIGHT);
 
     if (!device.getCurrentMeeting().is_defined && !device.getNextMeeting().is_defined)
     {

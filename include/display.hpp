@@ -25,15 +25,18 @@ public:
     Display();
     ~Display();
 
+    void showImage(const String &fileName);
+    void showRandomImage();
     void showErrorScreen(const Error &error);
     void showDeviceScreen(const DeviceState &deviceState);
     void showConnectionCodeScreen(const DeviceState &deviceState);
-    void showMessageScreen(const String &message, bool partialUpdate = false);
-    void showMessageScreen(const String &message, const String &secondaryMessage, bool partialUpdate = false);
+    void showMessageScreen(const String &message);
+    void showMessageScreen(const String &message, const String &secondaryMessage);
+
+    void deepSleep(uint sleepTimeMs);
 
 private:
     bool hasChanges;
-    static int partialUpdateCount;
 
     void printCurrentMeeting(const DeviceState &deviceState);
     void printNextMeeting(const DeviceState &deviceState);
@@ -42,5 +45,5 @@ private:
     void print(const String &text, uint x, uint y, Font font = Font::ROBOTO_24, TextAlign textAlign = TextAlign::LEFT);
 
     void setCurrentFont(Font font);
-    void commit(bool partialUpdate = false);
+    void commit();
 };
