@@ -73,7 +73,7 @@ void setup()
         auto device = getDeviceState();
         sleepTimeMs = device.getMsToNextRefresh();
 
-        if (device.isEnergySaving())
+        if (device.isEnergySaving() && !device.isOccupied())
             display.showRandomImage();
         else
             showDeviceView(display, device);

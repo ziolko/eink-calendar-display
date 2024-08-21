@@ -74,7 +74,7 @@ bool DeviceState::isOccupied() const
 
 bool DeviceState::isEnergySaving() const
 {
-    return response["current"].isNull() ? false : response["current"];
+    return response["isEnergySaving"].isNull() ? false : response["isEnergySaving"];
 }
 
 MeetingData::MeetingData(const JsonVariantConst &meeting)
