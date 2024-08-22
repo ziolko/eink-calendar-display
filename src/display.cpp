@@ -155,13 +155,25 @@ void Display::printOnCenter(const String &text, Font font)
     hasChanges = true;
 }
 
-void Display::print(const String &text, uint x, uint y, Font font, TextAlign textAlign)
+void Display::print(const String &message, uint x, uint y, Font font, TextAlign textAlign, bool wrapText)
 {
     setCurrentFont(font);
+    display.setTextWrap(wrapText);
 
     int16_t x1, y1;
     uint16_t width, height;
+
+    String text = message;
     display.getTextBounds(text, 0, 0, &x1, &y1, &width, &height);
+
+    // Add ellipsis if text wrapping is disabled
+    int i = 0;
+    while (!wrapText && i < text.length() - 1 && width + x > display.width())
+    {
+        text = message.substring(0, message.length() - i) + "...";
+        display.getTextBounds(text, 0, 0, &x1, &y1, &width, &height);
+        i++;
+    }
 
     if (textAlign == TextAlign::CENTER)
         display.setCursor(display.width() / 2 - width / 2 - x1, y - y1);
@@ -190,7 +202,9 @@ void Display::commit()
 void Display::showDeviceScreen(const DeviceState &device)
 {
     print(device.getRoomName(), 10, 10, Font::ROBOTO_48);
-    print(String(display.readBattery()) + "V", 10, 10, Font::ROBOTO_24, TextAlign::RIGHT);
+
+    print("Updated: " + device.getTime(), 10, 10, Font::ROBOTO_24, TextAlign::RIGHT);
+    print("Battery: " + String(display.readBattery()) + "V", 10, 34, Font::ROBOTO_24, TextAlign::RIGHT);
 
     if (!device.getCurrentMeeting().is_defined && !device.getNextMeeting().is_defined)
     {
@@ -225,9 +239,9 @@ void Display::printCurrentMeeting(const DeviceState &deviceState)
 
     if (current.is_defined)
     {
-        print(current.summary, 10, 200, Font::ROBOTO_48);
+        print(current.summary, 10, 200, Font::ROBOTO_48, TextAlign::LEFT, false);
         print(current.startTime + " - " + current.endTime, 10, 260, Font::ROBOTO_48);
-        print("Hosted by " + current.host, 10, 320, Font::ROBOTO_36);
+        print("Hosted by " + current.host, 10, 320, Font::ROBOTO_36, TextAlign::LEFT, false);
     }
 }
 
@@ -238,7 +252,7 @@ void Display::printNextMeeting(const DeviceState &deviceState)
     auto next = deviceState.getNextMeeting();
     if (next.is_defined)
     {
-        print("Next: " + next.summary, 10, 500, Font::ROBOTO_36);
+        print("Next: " + next.summary, 10, 500, Font::ROBOTO_36, TextAlign::LEFT, false);
         print(next.startTime + " - " + next.endTime, 10, 550, Font::ROBOTO_36);
     }
     else

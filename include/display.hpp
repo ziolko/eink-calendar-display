@@ -42,7 +42,7 @@ private:
     void printNextMeeting(const DeviceState &deviceState);
 
     void printOnCenter(const String &text, Font font);
-    void print(const String &text, uint x, uint y, Font font = Font::ROBOTO_24, TextAlign textAlign = TextAlign::LEFT);
+    void print(const String &text, uint x, uint y, Font font = Font::ROBOTO_24, TextAlign textAlign = TextAlign::LEFT, bool wrapText = true);
 
     void setCurrentFont(Font font);
     void commit();
