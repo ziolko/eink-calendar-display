@@ -8,10 +8,6 @@
 #include "storage.hpp"
 #include "device_state.hpp"
 
-// Provide WiFi credentials below. After the first run they will be
-// stored in device memory and can be removed from the constants below
-const char WIFI_SSID[] = "";
-const char WIFI_PASSWORD[] = "";
 const char TOKEN_STORAGE_KEY[16] = "token";
 
 RoombeltApi::~RoombeltApi()
