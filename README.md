@@ -50,7 +50,7 @@ Print the parts in the provided orientation using any material with the followin
 - Resolution: 0.2
 - Infill: 20%
 
-TODO: Assemble instruction
+TODO: Assembly instruction
 
 ## License
 The firware and instructions are shared under the GNU GPLv3 license. Models for 3D printer are available under CC BY-SA 4.0 license.
