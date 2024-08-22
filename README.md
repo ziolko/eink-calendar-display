@@ -52,12 +52,6 @@ Print the parts in the provided orientation using any material with the followin
 
 TODO: Assemble instruction
 
-## Setting up device in Roombelt
-TODO: Describe
-
-## Turning the device into e-ink photo 
-TODO: Describe
-
 ## License
 The firware and instructions are shared under the GNU GPLv3 license. Models for 3D printer are available under CC BY-SA 4.0 license.
 
