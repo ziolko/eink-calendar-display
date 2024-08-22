@@ -8,20 +8,20 @@
 #include "roombelt_api.hpp"
 #include "display.hpp"
 
-void showWelcomeView(Display &display)
+void showWelcomeView(Display &display, RoombeltApi &api)
 {
     display.showMessageScreen("Welcome");
     sleep(2);
     display.showMessageScreen("Connecting to WiFi...");
-    RoombeltApi api;
+    auto config = display.getConfig();
+    api.connect(config.ssid, config.password);
     sleep(2);
     display.showMessageScreen("Connecting to Roombelt...");
     sleep(2);
 }
 
-DeviceState getDeviceState()
+DeviceState getDeviceState(RoombeltApi api)
 {
-    RoombeltApi api;
     auto device = api.getDeviceState();
 
     if (device.getState() == StateInfo::DEVICE_REMOVED || device.getState() == StateInfo::MISSING_SESSION_ID)
@@ -63,14 +63,25 @@ void setup()
 {
     Serial.begin(115200);
     Display display;
+    RoombeltApi api;
+
     int sleepTimeMs = -1;
 
     try
     {
-        if (esp_sleep_get_wakeup_cause() != ESP_SLEEP_WAKEUP_TIMER)
-            showWelcomeView(display);
+        auto wakeupCause = esp_sleep_get_wakeup_cause();
+        if (wakeupCause == ESP_SLEEP_WAKEUP_EXT0) // User pressed the "wake up" button
+        {
+            display.showMessageScreen("Please wait...");
+        }
+        else if (wakeupCause != ESP_SLEEP_WAKEUP_TIMER)
+        {
+            showWelcomeView(display, api);
+        }
 
-        auto device = getDeviceState();
+        auto config = display.getConfig();
+        api.connect(config.ssid, config.password);
+        auto device = getDeviceState(api);
         sleepTimeMs = device.getMsToNextRefresh();
 
         if (device.isEnergySaving() && !device.isOccupied())

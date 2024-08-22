@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <Inkplate.h>
 #include <SdFat.h>
+#include <ArduinoJson.h>
 
 #include "display.hpp"
 
@@ -35,16 +36,14 @@ void Display::deepSleep(uint sleepTimeMs)
         display.sdCardSleep();
     }
 
-    esp_sleep_enable_timer_wakeup(sleepTimeMs * uS_TO_mS_FACTOR);
+    esp_sleep_enable_ext0_wakeup(GPIO_NUM_36, 0);                 // wake up on the "wake up" side button
+    esp_sleep_enable_timer_wakeup(sleepTimeMs * uS_TO_mS_FACTOR); // wake up on the RTC clock
     esp_deep_sleep_start();
 }
 
 void Display::showImage(const String &fileName)
 {
-    if (!display.getSdCardOk())
-    {
-        display.sdCardInit();
-    }
+    initMicroSD();
 
     display.drawImage(fileName, 0, 0);
     hasChanges = true;
@@ -53,33 +52,60 @@ void Display::showImage(const String &fileName)
 
 void Display::showRandomImage()
 {
-    if (!display.getSdCardOk())
-    {
-        display.sdCardInit();
-    }
+    initMicroSD();
+
     SdFile root, file;
 
     std::vector<String> files;
     char fileNameBuffer[100];
     root.open("/");
 
-    // TODO - handle errors
     while (file.openNext(&root, O_RDONLY))
     {
-
-        // TODO - handle errors
-        file.getName(fileNameBuffer, 100);
-        file.close();
-        if (String(fileNameBuffer).endsWith(".bmp"))
-        {
+        if (file.getName(fileNameBuffer, 100) && String(fileNameBuffer).endsWith(".bmp"))
             files.push_back(fileNameBuffer);
-        }
+
+        file.close();
     }
+
     root.close();
 
     if (files.size() > 0)
-    {
         showImage(files.at(random(files.size())));
+}
+
+Config Display::getConfig()
+{
+    initMicroSD();
+
+    SdFile file;
+    if (!file.open("/config.json", O_RDONLY))
+        throw Error("Unable to open config.json file on the micro SD card.");
+
+    auto size = file.fileSize();
+    if (size > 1024)
+        throw Error("config.json file is too large.");
+
+    char buffer[size];
+    file.read(buffer, size);
+
+    JsonDocument config;
+    deserializeJson(config, buffer);
+
+    return Config{
+        ssid : config["ssid"],
+        password : config["password"],
+    };
+}
+
+void Display::initMicroSD()
+{
+    if (!display.getSdCardOk())
+    {
+        if (!display.sdCardInit())
+        {
+            throw Error("Unable to initialize the micro SD card.");
+        }
     }
 }
 

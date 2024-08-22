@@ -5,8 +5,10 @@
 class RoombeltApi
 {
 public:
-    RoombeltApi();
     ~RoombeltApi();
+
+    void connect(String ssid, String password);
+    void disconnect();
 
     void removeDevice();
     void registerNewDevice();

@@ -14,12 +14,20 @@ const char WIFI_SSID[] = "";
 const char WIFI_PASSWORD[] = "";
 const char TOKEN_STORAGE_KEY[16] = "token";
 
-RoombeltApi::RoombeltApi()
+RoombeltApi::~RoombeltApi()
 {
-    auto credentials = getWiFiCredentials();
+    WiFi.disconnect();
+}
+
+void RoombeltApi::connect(String ssid, String password)
+{
+    if (WiFi.status() == WL_CONNECTED)
+    {
+        return;
+    }
 
     WiFi.mode(WIFI_STA);
-    WiFi.begin(std::get<0>(credentials), std::get<1>(credentials));
+    WiFi.begin(ssid, password);
 
     Serial.println("\nConnecting to WiFi");
 
@@ -39,8 +47,7 @@ RoombeltApi::RoombeltApi()
     Serial.print("Local ESP32 IP: ");
     Serial.println(WiFi.localIP());
 }
-
-RoombeltApi::~RoombeltApi()
+void RoombeltApi::disconnect()
 {
     WiFi.disconnect();
 }
@@ -120,27 +127,4 @@ void RoombeltApi::assertWiFi()
     {
         throw ErrorWifiConnection("WiFi is not connected. Current status: " + String(status));
     }
-}
-
-std::tuple<String, String> RoombeltApi::getWiFiCredentials()
-{
-    Storage storage;
-
-    if (strlen(WIFI_SSID) > 0 && strlen(WIFI_PASSWORD) > 0)
-    {
-        Serial.println("Storing provided WiFi credentials");
-        storage.setString("wifi_ssid", WIFI_SSID);
-        storage.setString("wifi_password", WIFI_PASSWORD);
-    }
-
-    Serial.println("Loading stored WiFi credentials");
-    String ssid = storage.getString("wifi_ssid");
-    String password = storage.getString("wifi_password");
-
-    if (ssid == "" || password == "")
-    {
-        throw ErrorStorage("Missing WiFi SSID or password");
-    }
-
-    return std::tuple{ssid, password};
 }

@@ -19,6 +19,12 @@ enum TextAlign
     CENTER,
 };
 
+struct Config
+{
+    String ssid;
+    String password;
+};
+
 class Display
 {
 public:
@@ -35,6 +41,8 @@ public:
 
     void deepSleep(uint sleepTimeMs);
 
+    Config getConfig();
+
 private:
     bool hasChanges;
 
@@ -46,4 +54,5 @@ private:
 
     void setCurrentFont(Font font);
     void commit();
+    void initMicroSD();
 };
