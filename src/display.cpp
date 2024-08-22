@@ -202,9 +202,7 @@ void Display::commit()
 void Display::showDeviceScreen(const DeviceState &device)
 {
     print(device.getRoomName(), 10, 10, Font::ROBOTO_48);
-
-    print("Updated: " + device.getTime(), 10, 10, Font::ROBOTO_24, TextAlign::RIGHT);
-    print("Battery: " + String(display.readBattery()) + "V", 10, 34, Font::ROBOTO_24, TextAlign::RIGHT);
+    print("Battery: " + String(display.readBattery()) + "V", 10, 10, Font::ROBOTO_24, TextAlign::RIGHT);
 
     if (!device.getCurrentMeeting().is_defined && !device.getNextMeeting().is_defined)
     {
