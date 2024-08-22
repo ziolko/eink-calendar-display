@@ -1,4 +1,4 @@
-# E-ink meeting room schedule & photo frame
+# E-ink meeting room schedule display
 
 <img src="img/device-front.jpg" width="400"> <img src="img/device-side.jpg" width="400">
 
