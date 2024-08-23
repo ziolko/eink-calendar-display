@@ -50,7 +50,14 @@ Print the parts in the provided orientation using any material with the followin
 - Resolution: 0.2
 - Infill: 20%
 
-TODO: Assembly instruction
+Once you have everything in place follow the instruction below:
+
+1. Attach the battery to the back cover using a double sided tape. 
+2. Put the board into the front cover.
+3. Connect the battery to the board.
+4. Ensure that the board works and turn of the power LED using the switch on the board.
+5. Put the back cover in place.
+6. Use the screws to secure the back cover.
 
 ## License
 The firware and instructions are shared under the GNU GPLv3 license. Models for 3D printer are available under CC BY-SA 4.0 license.
