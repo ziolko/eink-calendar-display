@@ -34,12 +34,12 @@ DeviceState getDeviceState(RoombeltApi api)
     return device;
 }
 
-void showDeviceView(Display &display, DeviceState &device)
+void showDeviceView(Display &display, DeviceState &device, bool forceShow)
 {
     DeviceStateHash hash;
 
     // Update screen only if data changed
-    if (hash.isEqualStoredHash(device))
+    if (hash.isEqualStoredHash(device) && !forceShow)
     {
         return;
     }
@@ -70,9 +70,10 @@ void setup()
     try
     {
         auto wakeupCause = esp_sleep_get_wakeup_cause();
-        if (wakeupCause == ESP_SLEEP_WAKEUP_EXT0) // User pressed the "wake up" button
+        auto isForceRefresh = wakeupCause == ESP_SLEEP_WAKEUP_EXT0; // User pressed the "wake up" button
+        if (isForceRefresh)
         {
-            display.showMessageScreen("Please wait...");
+            display.showRandomImage();
         }
         else if (wakeupCause != ESP_SLEEP_WAKEUP_TIMER)
         {
@@ -84,10 +85,14 @@ void setup()
         auto device = getDeviceState(api);
         sleepTimeMs = device.getMsToNextRefresh();
 
-        if (device.isEnergySaving() && !device.isOccupied())
+        if (!device.isEnergySaving() || device.isOccupied())
+        {
+            showDeviceView(display, device, isForceRefresh);
+        }
+        else if (!isForceRefresh)
+        {
             display.showRandomImage();
-        else
-            showDeviceView(display, device);
+        }
     }
     catch (Error error)
     {

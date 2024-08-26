@@ -12,6 +12,7 @@
 #include "fonts/roboto_64.h"
 
 #define uS_TO_mS_FACTOR 1000
+#define PADDING_RIGHT 55
 
 Inkplate display(INKPLATE_3BIT);
 
@@ -138,13 +139,14 @@ void Display::showMessageScreen(const String &message, const String &secondaryMe
     display.getTextBounds(secondaryMessage, 0, 0, &secondaryX, &secondaryY, &secondaryWidth, &secondaryHeight);
 
     auto totalHeight = primaryHeight + secondaryHeight + margin;
+    auto screenWidth = display.width() - PADDING_RIGHT;
 
     setCurrentFont(primaryFont);
-    display.setCursor(display.width() / 2 - primaryWidth / 2 - primaryX, display.height() / 2 - totalHeight / 2 - primaryY);
+    display.setCursor(screenWidth / 2 - primaryWidth / 2 - primaryX, display.height() / 2 - totalHeight / 2 - primaryY);
     display.print(message);
 
     setCurrentFont(secondaryFont);
-    display.setCursor(display.width() / 2 - secondaryWidth / 2 - secondaryX, display.height() / 2 - totalHeight / 2 - primaryY + margin + primaryHeight);
+    display.setCursor(screenWidth / 2 - secondaryWidth / 2 - secondaryX, display.height() / 2 - totalHeight / 2 - primaryY + margin + primaryHeight);
     display.print(secondaryMessage);
 
     hasChanges = true;
@@ -170,12 +172,14 @@ void Display::setCurrentFont(Font font)
 
 void Display::printOnCenter(const String &text, Font font)
 {
+    auto screenWidth = display.width() - PADDING_RIGHT;
+
     setCurrentFont(font);
 
     int16_t x1, y1;
     uint16_t width, height;
     display.getTextBounds(text, 0, 0, &x1, &y1, &width, &height);
-    display.setCursor(display.width() / 2 - width / 2 - x1, display.height() / 2 - height / 2 - y1);
+    display.setCursor(screenWidth / 2 - width / 2 - x1, display.height() / 2 - height / 2 - y1);
     display.print(text);
 
     hasChanges = true;
@@ -192,9 +196,11 @@ void Display::print(const String &message, uint x, uint y, Font font, TextAlign 
     String text = message;
     display.getTextBounds(text, 0, 0, &x1, &y1, &width, &height);
 
+    auto screenWidth = display.width() - PADDING_RIGHT;
+
     // Add ellipsis if text wrapping is disabled
     int i = 0;
-    while (!wrapText && i < text.length() - 1 && width + x > display.width())
+    while (!wrapText && i < text.length() - 1 && width + x > screenWidth)
     {
         text = message.substring(0, message.length() - i) + "...";
         display.getTextBounds(text, 0, 0, &x1, &y1, &width, &height);
@@ -202,11 +208,11 @@ void Display::print(const String &message, uint x, uint y, Font font, TextAlign 
     }
 
     if (textAlign == TextAlign::CENTER)
-        display.setCursor(display.width() / 2 - width / 2 - x1, y - y1);
+        display.setCursor(screenWidth / 2 - width / 2 - x1, y - y1);
     else if (textAlign == TextAlign::LEFT)
         display.setCursor(x - x1, y - y1);
     else if (textAlign == TextAlign::RIGHT)
-        display.setCursor(display.width() - x - x1 - width, y - y1);
+        display.setCursor(screenWidth - x - x1 - width, y - y1);
 
     display.print(text);
 
@@ -271,7 +277,9 @@ void Display::printCurrentMeeting(const DeviceState &deviceState)
 
 void Display::printNextMeeting(const DeviceState &deviceState)
 {
-    display.drawThickLine(0, 480, display.width(), 480, BLACK, 3);
+    auto screenWidth = display.width() - PADDING_RIGHT;
+
+    display.drawThickLine(0, 480, screenWidth, 480, BLACK, 3);
 
     auto next = deviceState.getNextMeeting();
     if (next.is_defined)
