@@ -62,6 +62,16 @@ MeetingData DeviceState::getNextMeeting() const
     return MeetingData(response["next"]);
 }
 
+std::vector<MeetingData> DeviceState::getUpcomingMeetings() const
+{
+    std::vector<MeetingData> result;
+    for (auto i = 0; i < response["later"].size(); i++)
+    {
+        result.push_back(MeetingData(response["later"][i]));
+    }
+    return result;
+}
+
 int DeviceState::getMsToNextRefresh() const
 {
     return response["msToNextRefresh"].isNull() ? 0 : response["msToNextRefresh"];

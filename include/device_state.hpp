@@ -38,6 +38,7 @@ public:
     String getRoomName() const;
     MeetingData getCurrentMeeting() const;
     MeetingData getNextMeeting() const;
+    std::vector<MeetingData> getUpcomingMeetings() const;
 
     int getMsToNextRefresh() const;
     bool isOccupied() const;

@@ -36,7 +36,7 @@ void RoombeltApi::connect(String ssid, String password)
     if (WiFi.status() != WL_CONNECTED)
     {
         Serial.print("Unable to connect to Wifi. Status: " + WiFi.status());
-        throw ErrorWifiConnection("Unable to connect to Wifi. Status: " + String(WiFi.status()));
+        throw ErrorWifiConnection(WiFi.status());
     }
 
     Serial.println("\nConnected to the WiFi network");
@@ -121,6 +121,6 @@ void RoombeltApi::assertWiFi()
     auto status = WiFi.status();
     if (status != WL_CONNECTED)
     {
-        throw ErrorWifiConnection("WiFi is not connected. Current status: " + String(status));
+        throw ErrorWifiConnection(status);
     }
 }

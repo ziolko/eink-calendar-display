@@ -94,8 +94,14 @@ void setup()
             display.showRandomImage();
         }
     }
+    catch (ErrorWifiConnection error)
+    {
+        display.showImage(ERROR_IMAGE, 200, 100, 200, 200);
+        display.showMessageScreen("Network error", error.getStatus());
+    }
     catch (Error error)
     {
+        display.showImage(ERROR_IMAGE, 200, 100, 200, 200);
         display.showErrorScreen(error);
     }
 

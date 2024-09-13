@@ -1,6 +1,8 @@
 #pragma once
 
 #include <Arduino.h>
+#include <Inkplate.h>
+#include <WiFiType.h>
 
 class Error
 {
@@ -13,7 +15,11 @@ public:
 
 class ErrorWifiConnection : public Error
 {
-    using Error::Error;
+    uint status;
+
+public:
+    explicit ErrorWifiConnection(uint status);
+    String getStatus();
 };
 
 class ErrorStorage : public Error
@@ -25,3 +31,5 @@ class ErrorHttp : public Error
 {
     using Error::Error;
 };
+
+extern const unsigned char ERROR_IMAGE[] PROGMEM;

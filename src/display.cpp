@@ -12,7 +12,10 @@
 #include "fonts/roboto_64.h"
 
 #define uS_TO_mS_FACTOR 1000
-#define PADDING_RIGHT 55
+
+#define SCREEN_ROTATION 3
+#define SCREEN_PADDING_RIGHT 0
+#define SCREEN_PADDING_BOTTOM 55
 
 Inkplate display(INKPLATE_3BIT);
 
@@ -23,6 +26,7 @@ Display::Display()
     display.begin();
     display.clearDisplay();
     display.setTextColor(BLACK);
+    display.setRotation(SCREEN_ROTATION);
 }
 
 Display::~Display()
@@ -44,6 +48,7 @@ void Display::deepSleep(uint sleepTimeMs)
 
 void Display::showImage(const String &fileName)
 {
+    return;
     initMicroSD();
 
     display.drawImage(fileName, 0, 0);
@@ -53,6 +58,7 @@ void Display::showImage(const String &fileName)
 
 void Display::showRandomImage()
 {
+    return;
     initMicroSD();
 
     SdFile root, file;
@@ -75,13 +81,19 @@ void Display::showRandomImage()
         showImage(files.at(random(files.size())));
 }
 
+void Display::showImage(const unsigned char *imageData, uint x, uint y, uint width, uint height)
+{
+    display.drawBitmap(x, y, imageData, width, height, WHITE);
+    hasChanges = true;
+}
+
 Config Display::getConfig()
 {
     initMicroSD();
 
     SdFile file;
     if (!file.open("/config.json", O_RDONLY))
-        throw Error("Unable to open config.json file on the micro SD card.");
+        throw Error("No config.json file on the micro SD card.");
 
     auto size = file.fileSize();
     if (size > 1024)
@@ -112,7 +124,7 @@ void Display::initMicroSD()
 
 void Display::showErrorScreen(const Error &error)
 {
-    printOnCenter("Unhandled error: " + error.message, Font::ROBOTO_48);
+    this->showMessageScreen("There was an error", error.message);
     commit();
 }
 
@@ -125,7 +137,7 @@ void Display::showMessageScreen(const String &message)
 void Display::showMessageScreen(const String &message, const String &secondaryMessage)
 {
     auto primaryFont = Font::ROBOTO_48;
-    auto secondaryFont = Font::ROBOTO_36;
+    auto secondaryFont = Font::ROBOTO_24;
     auto margin = 20;
 
     setCurrentFont(primaryFont);
@@ -139,14 +151,15 @@ void Display::showMessageScreen(const String &message, const String &secondaryMe
     display.getTextBounds(secondaryMessage, 0, 0, &secondaryX, &secondaryY, &secondaryWidth, &secondaryHeight);
 
     auto totalHeight = primaryHeight + secondaryHeight + margin;
-    auto screenWidth = display.width() - PADDING_RIGHT;
+    auto screenWidth = display.width() - SCREEN_PADDING_RIGHT;
+    auto screenHeight = display.height() - SCREEN_PADDING_BOTTOM;
 
     setCurrentFont(primaryFont);
-    display.setCursor(screenWidth / 2 - primaryWidth / 2 - primaryX, display.height() / 2 - totalHeight / 2 - primaryY);
+    display.setCursor(screenWidth / 2 - primaryWidth / 2 - primaryX, screenHeight / 2 - totalHeight / 2 - primaryY);
     display.print(message);
 
     setCurrentFont(secondaryFont);
-    display.setCursor(screenWidth / 2 - secondaryWidth / 2 - secondaryX, display.height() / 2 - totalHeight / 2 - primaryY + margin + primaryHeight);
+    display.setCursor(screenWidth / 2 - secondaryWidth / 2 - secondaryX, screenHeight / 2 - totalHeight / 2 - primaryY + margin + primaryHeight);
     display.print(secondaryMessage);
 
     hasChanges = true;
@@ -172,14 +185,14 @@ void Display::setCurrentFont(Font font)
 
 void Display::printOnCenter(const String &text, Font font)
 {
-    auto screenWidth = display.width() - PADDING_RIGHT;
+    auto screenWidth = display.width() - SCREEN_PADDING_RIGHT;
+    auto screenHeight = display.height() - SCREEN_PADDING_BOTTOM;
 
     setCurrentFont(font);
-
     int16_t x1, y1;
     uint16_t width, height;
     display.getTextBounds(text, 0, 0, &x1, &y1, &width, &height);
-    display.setCursor(screenWidth / 2 - width / 2 - x1, display.height() / 2 - height / 2 - y1);
+    display.setCursor(screenWidth / 2 - width / 2 - x1, screenHeight / 2 - height / 2 - y1);
     display.print(text);
 
     hasChanges = true;
@@ -196,11 +209,12 @@ void Display::print(const String &message, uint x, uint y, Font font, TextAlign 
     String text = message;
     display.getTextBounds(text, 0, 0, &x1, &y1, &width, &height);
 
-    auto screenWidth = display.width() - PADDING_RIGHT;
+    auto screenWidth = display.width() - SCREEN_PADDING_RIGHT;
 
+    Serial.println("Starting measuring for text: " + message);
     // Add ellipsis if text wrapping is disabled
     int i = 0;
-    while (!wrapText && i < text.length() - 1 && width + x > screenWidth)
+    while (!wrapText && i < message.length() - 1 && width > screenWidth - x)
     {
         text = message.substring(0, message.length() - i) + "...";
         display.getTextBounds(text, 0, 0, &x1, &y1, &width, &height);
@@ -233,23 +247,44 @@ void Display::commit()
 
 void Display::showDeviceScreen(const DeviceState &device)
 {
-    print(device.getRoomName(), 10, 10, Font::ROBOTO_48);
-    print("Battery: " + String(display.readBattery()) + "V", 10, 10, Font::ROBOTO_24, TextAlign::RIGHT);
-
     if (!device.getCurrentMeeting().is_defined && !device.getNextMeeting().is_defined)
     {
-        print("Available all day", 0, 280, Font::ROBOTO_64, TextAlign::CENTER);
+        print("Wolne", 0, 280, Font::ROBOTO_64, TextAlign::CENTER);
+        print("do konca dnia", 0, 360, Font::ROBOTO_48, TextAlign::CENTER);
+        display.drawThickLine(280, 362, 288, 355, BLACK, 3);
+
+        commit();
+        return;
     }
-    else if (!device.getCurrentMeeting().is_defined)
+
+    if (!device.getCurrentMeeting().is_defined)
     {
-        print("Available", 0, 240, Font::ROBOTO_64, TextAlign::CENTER);
-        printNextMeeting(device);
+        print("Wolne", 0, 40, Font::ROBOTO_64, TextAlign::CENTER);
+        print("do " + device.getNextMeeting().startTime, 0, 120, Font::ROBOTO_48, TextAlign::CENTER);
     }
     else
     {
-        print("Occupied", 10, 80, Font::ROBOTO_64);
         printCurrentMeeting(device);
-        printNextMeeting(device);
+    }
+
+    auto upcoming = device.getUpcomingMeetings();
+    auto maxUpcoming = 3;
+    auto upcomingStartY = 200;
+    auto upcomingRowHeight = 150;
+
+    for (int i = 0; i < upcoming.size() && i < maxUpcoming; i++)
+    {
+        printNextMeeting(upcoming[i], upcomingStartY + i * upcomingRowHeight);
+    }
+
+    auto moreSize = upcoming.size() - maxUpcoming;
+    if (moreSize > 0)
+    {
+        auto yPos = upcomingStartY + maxUpcoming * upcomingRowHeight;
+        display.drawThickLine(0, yPos, display.width(), yPos, BLACK, 3);
+        auto meetings = moreSize == 1 ? " rezerwacja " : moreSize < 5 ? " rezerwacje "
+                                                                      : " rezerwacji ";
+        print("Jeszcze " + String(moreSize) + meetings + "dzisiaj", 20, yPos + 35, Font::ROBOTO_36);
     }
 
     commit();
@@ -263,32 +298,83 @@ void Display::showConnectionCodeScreen(const DeviceState &device)
     return commit();
 }
 
+std::vector<String> Display::measureLineBreak(const String &input, Font font, int margin)
+{
+    auto result = std::vector<String>();
+    int lastWhitespace = 0;
+    int16_t x1, y1;
+    uint16_t width, height;
+
+    setCurrentFont(font);
+    display.setTextWrap(false);
+
+    Serial.println("Measuring " + input);
+    for (int i = 1; i < input.length(); i++)
+    {
+        if (input[i] == ' ' && input[i - 1] != ' ')
+        {
+            lastWhitespace = i;
+            continue;
+        }
+
+        display.getTextBounds(input.substring(0, i + 1), 0, 0, &x1, &y1, &width, &height);
+
+        Serial.println("i = " + String(i) + " width = " + String(width) + " x1 = " + x1 + " whitespace = " + lastWhitespace + " : " + input.substring(0, i));
+
+        if (width >= display.width() - 2 * margin)
+        {
+            if (lastWhitespace == 0)
+            {
+                result.push_back(input.substring(0, i));
+                result.push_back(input.substring(i));
+            }
+            else
+            {
+                result.push_back(input.substring(0, lastWhitespace));
+                result.push_back(input.substring(lastWhitespace + 1));
+            }
+
+            result[0].trim();
+            result[1].trim();
+            return result;
+        }
+    }
+
+    result.push_back(input);
+    return result;
+}
+
 void Display::printCurrentMeeting(const DeviceState &deviceState)
 {
     auto current = deviceState.getCurrentMeeting();
 
-    if (current.is_defined)
+    if (!current.is_defined)
     {
-        print(current.summary, 10, 200, Font::ROBOTO_48, TextAlign::LEFT, false);
-        print(current.startTime + " - " + current.endTime, 10, 260, Font::ROBOTO_48);
-        print("Hosted by " + current.host, 10, 320, Font::ROBOTO_36, TextAlign::LEFT, false);
+        return;
     }
-}
 
-void Display::printNextMeeting(const DeviceState &deviceState)
-{
-    auto screenWidth = display.width() - PADDING_RIGHT;
+    auto lines = measureLineBreak(current.summary, Font::ROBOTO_48, 20);
 
-    display.drawThickLine(0, 480, screenWidth, 480, BLACK, 3);
-
-    auto next = deviceState.getNextMeeting();
-    if (next.is_defined)
+    if (lines.size() == 1)
     {
-        print("Next: " + next.summary, 10, 500, Font::ROBOTO_36, TextAlign::LEFT, false);
-        print(next.startTime + " - " + next.endTime, 10, 550, Font::ROBOTO_36);
+        print(current.summary, 20, 45, Font::ROBOTO_48, TextAlign::LEFT, false);
+        print(current.startTime + " - " + current.endTime, 20, 110, Font::ROBOTO_48);
     }
     else
     {
-        print("No more meetings later today", 10, 500, Font::ROBOTO_36);
+        print(lines[0], 20, 20, Font::ROBOTO_48, TextAlign::LEFT, false);
+        print(lines[1], 20, 75, Font::ROBOTO_48, TextAlign::LEFT, false);
+        print(current.startTime + " - " + current.endTime, 10, 140, Font::ROBOTO_48);
+    }
+}
+
+void Display::printNextMeeting(const MeetingData &meeting, int startY)
+{
+    display.drawThickLine(0, startY, display.width(), startY, BLACK, 3);
+
+    if (meeting.is_defined)
+    {
+        print(meeting.summary, 20, startY + 35, Font::ROBOTO_36, TextAlign::LEFT, false);
+        print(meeting.startTime + " - " + meeting.endTime, 20, startY + 85, Font::ROBOTO_36);
     }
 }
