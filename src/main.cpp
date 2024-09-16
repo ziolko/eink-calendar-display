@@ -8,27 +8,15 @@
 #include "roombelt_api.hpp"
 #include "display.hpp"
 
-void showWelcomeView(Display &display, RoombeltApi &api)
+DeviceState getDeviceState(RoombeltApi api, double battery)
 {
-    display.showMessageScreen("Welcome");
-    sleep(2);
-    display.showMessageScreen("Connecting to WiFi...");
-    auto config = display.getConfig();
-    api.connect(config.ssid, config.password);
-    sleep(2);
-    display.showMessageScreen("Connecting to Roombelt...");
-    sleep(2);
-}
-
-DeviceState getDeviceState(RoombeltApi api)
-{
-    auto device = api.getDeviceState();
+    auto device = api.getDeviceState(3, battery);
 
     if (device.getState() == StateInfo::DEVICE_REMOVED || device.getState() == StateInfo::MISSING_SESSION_ID)
     {
         api.removeDevice();
         api.registerNewDevice();
-        device = api.getDeviceState();
+        device = api.getDeviceState(3, battery);
     }
 
     return device;
@@ -66,6 +54,7 @@ void setup()
     RoombeltApi api;
 
     int sleepTimeMs = -1;
+    auto battery = display.getBattery();
 
     try
     {
@@ -73,16 +62,17 @@ void setup()
         auto isForceRefresh = wakeupCause == ESP_SLEEP_WAKEUP_EXT0; // User pressed the "wake up" button
         if (isForceRefresh)
         {
-            display.showRandomImage();
+            display.showMessageScreen("Dobrze Cie widziec!", "Stan baterii: " + String(battery) + "V");
+            // display.showRandomImage();
         }
         else if (wakeupCause != ESP_SLEEP_WAKEUP_TIMER)
         {
-            showWelcomeView(display, api);
+            display.showMessageScreen("Dobrze Cie widziec!", "Stan baterii: " + String(battery) + "V");
         }
 
         auto config = display.getConfig();
         api.connect(config.ssid, config.password);
-        auto device = getDeviceState(api);
+        auto device = getDeviceState(api, battery);
         sleepTimeMs = device.getMsToNextRefresh();
 
         if (!device.isEnergySaving() || device.isOccupied())

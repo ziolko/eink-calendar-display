@@ -9,6 +9,19 @@
 #include "device_state.hpp"
 
 const char TOKEN_STORAGE_KEY[16] = "token";
+const char ROOT_CA[] = "-----BEGIN CERTIFICATE-----\n"
+                       "MIICCTCCAY6gAwIBAgINAgPlwGjvYxqccpBQUjAKBggqhkjOPQQDAzBHMQswCQYD\n"
+                       "VQQGEwJVUzEiMCAGA1UEChMZR29vZ2xlIFRydXN0IFNlcnZpY2VzIExMQzEUMBIG\n"
+                       "A1UEAxMLR1RTIFJvb3QgUjQwHhcNMTYwNjIyMDAwMDAwWhcNMzYwNjIyMDAwMDAw\n"
+                       "WjBHMQswCQYDVQQGEwJVUzEiMCAGA1UEChMZR29vZ2xlIFRydXN0IFNlcnZpY2Vz\n"
+                       "IExMQzEUMBIGA1UEAxMLR1RTIFJvb3QgUjQwdjAQBgcqhkjOPQIBBgUrgQQAIgNi\n"
+                       "AATzdHOnaItgrkO4NcWBMHtLSZ37wWHO5t5GvWvVYRg1rkDdc/eJkTBa6zzuhXyi\n"
+                       "QHY7qca4R9gq55KRanPpsXI5nymfopjTX15YhmUPoYRlBtHci8nHc8iMai/lxKvR\n"
+                       "HYqjQjBAMA4GA1UdDwEB/wQEAwIBhjAPBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQW\n"
+                       "BBSATNbrdP9JNqPV2Py1PsVq8JQdjDAKBggqhkjOPQQDAwNpADBmAjEA6ED/g94D\n"
+                       "9J+uHXqnLrmvT/aDHQ4thQEd0dlq7A/Cr8deVl5c1RxYIigL9zC2L7F8AjEA8GE8\n"
+                       "p/SgguMh1YQdc4acLa/KNJvxn7kjNuK8YAOdgLOaVsjh4rsUecrNIdSUtUlD\n"
+                       "-----END CERTIFICATE-----\n";
 
 RoombeltApi::~RoombeltApi()
 {
@@ -63,7 +76,7 @@ void RoombeltApi::registerNewDevice()
     CookieJar cookies;
     HTTPClient http;
     String serverPath = "https://app.roombelt.com/api/device";
-    http.begin(serverPath.c_str());
+    http.begin(serverPath.c_str(), ROOT_CA);
     http.setCookieJar(&cookies);
     int httpResponseCode = http.POST("");
 
@@ -84,16 +97,16 @@ void RoombeltApi::registerNewDevice()
     throw ErrorHttp("No session token header in the respones while creating session token");
 }
 
-DeviceState RoombeltApi::getDeviceState(int retryCount)
+DeviceState RoombeltApi::getDeviceState(int retryCount, double battery)
 {
     assertWiFi();
 
     Storage storage;
     HTTPClient http;
-    String serverPath = "https://app.roombelt.com/api/device/summary";
+    String serverPath = "https://app.roombelt.com/api/device/summary?battery=" + String(battery);
     String sessionToken = storage.getString(TOKEN_STORAGE_KEY);
 
-    http.begin(serverPath.c_str());
+    http.begin(serverPath.c_str(), ROOT_CA);
     http.addHeader("Cookie", "deviceSessionToken=" + sessionToken + ";");
 
     int httpResponseCode = http.GET();
@@ -110,7 +123,7 @@ DeviceState RoombeltApi::getDeviceState(int retryCount)
     if (httpResponseCode != 200 && httpResponseCode != 403 && httpResponseCode != 418 && retryCount > 0)
     {
         delay(500);
-        return getDeviceState(retryCount - 1);
+        return getDeviceState(retryCount - 1, battery);
     }
 
     return DeviceState(httpResponseCode, deviceState);

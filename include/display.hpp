@@ -39,6 +39,7 @@ public:
     void showConnectionCodeScreen(const DeviceState &deviceState);
     void showMessageScreen(const String &message);
     void showMessageScreen(const String &message, const String &secondaryMessage);
+    double getBattery();
 
     void deepSleep(uint sleepTimeMs);
 

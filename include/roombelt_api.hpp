@@ -12,7 +12,7 @@ public:
 
     void removeDevice();
     void registerNewDevice();
-    DeviceState getDeviceState(int retryCount = 3);
+    DeviceState getDeviceState(int retryCount, double battery);
 
 private:
     String getSessionToken();

@@ -34,6 +34,11 @@ Display::~Display()
     commit();
 }
 
+double Display::getBattery()
+{
+    return display.readBattery();
+}
+
 void Display::deepSleep(uint sleepTimeMs)
 {
     if (display.getSdCardOk())
@@ -48,7 +53,6 @@ void Display::deepSleep(uint sleepTimeMs)
 
 void Display::showImage(const String &fileName)
 {
-    return;
     initMicroSD();
 
     display.drawImage(fileName, 0, 0);
@@ -58,7 +62,6 @@ void Display::showImage(const String &fileName)
 
 void Display::showRandomImage()
 {
-    return;
     initMicroSD();
 
     SdFile root, file;
