@@ -277,11 +277,11 @@ void Display::showDeviceScreen(const DeviceState &device)
         printNextMeeting(upcoming[i], upcomingStartY + i * upcomingRowHeight);
     }
 
-    auto moreSize = upcoming.size() - maxUpcoming;
-    if (moreSize > 0)
+    if (upcoming.size() > maxUpcoming)
     {
         auto yPos = upcomingStartY + maxUpcoming * upcomingRowHeight;
         display.drawThickLine(0, yPos, display.width(), yPos, BLACK, 3);
+        auto moreSize = upcoming.size() - maxUpcoming;
         auto meetings = moreSize == 1 ? " rezerwacja " : moreSize < 5 ? " rezerwacje "
                                                                       : " rezerwacji ";
         print("Jeszcze " + String(moreSize) + meetings + "dzisiaj", 20, yPos + 35, Font::ROBOTO_36);

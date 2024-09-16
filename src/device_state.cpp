@@ -137,6 +137,11 @@ void DeviceStateHash::computeHash(const DeviceState &state, byte *result) const
     MeetingData next = state.getNextMeeting();
     str += next.summary + next.startTime + next.endTime;
 
+    for (auto meeting : state.getUpcomingMeetings())
+    {
+        str += meeting.summary + meeting.startTime + meeting.endTime;
+    }
+
     hasher.doUpdate(str.c_str());
     hasher.doFinal(result);
 }
