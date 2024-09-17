@@ -250,48 +250,42 @@ void Display::commit()
 
 void Display::showDeviceScreen(const DeviceState &device)
 {
+    // Special case if there are no meetings today at all
     if (!device.getCurrentMeeting().is_defined && !device.getNextMeeting().is_defined)
     {
         print("Wolne", 0, 280, Font::ROBOTO_64, TextAlign::CENTER);
         print("do konca dnia", 0, 360, Font::ROBOTO_48, TextAlign::CENTER);
         display.drawThickLine(280, 362, 288, 355, BLACK, 3);
-
         commit();
         return;
     }
 
-    if (!device.getCurrentMeeting().is_defined)
-    {
-        print("Wolne", 0, 40, Font::ROBOTO_64, TextAlign::CENTER);
-        print("do " + device.getNextMeeting().startTime, 0, 120, Font::ROBOTO_48, TextAlign::CENTER);
-    }
-    else
-    {
-        printCurrentMeeting(device);
-    }
-
+    int screenHeight = display.height() - SCREEN_PADDING_BOTTOM;
     auto upcoming = device.getUpcomingMeetings();
-    auto maxUpcoming = 3;
-    auto upcomingStartY = 200;
-    auto upcomingRowHeight = 150;
+    auto displayedUpcoming = std::min(2, (int)upcoming.size());
+    auto remainingUpcoming = std::max(0, (int)upcoming.size() - displayedUpcoming);
 
-    for (int i = 0; i < upcoming.size() && i < maxUpcoming; i++)
+    auto endOfFirstRow = std::max(300, screenHeight / (displayedUpcoming + 2));
+    auto upcomingRowHeight = std::max(160, (screenHeight - endOfFirstRow) / (displayedUpcoming + 1));
+
+    printCurrentMeeting(device, 0, endOfFirstRow);
+
+    for (int i = 0; i < displayedUpcoming; i++)
     {
-        printNextMeeting(upcoming[i], upcomingStartY + i * upcomingRowHeight);
+        auto startY = endOfFirstRow + i * upcomingRowHeight;
+        display.drawThickLine(0, startY, display.width(), startY, BLACK, 3);
+        printNextMeeting(upcoming[i], startY, startY + upcomingRowHeight);
     }
 
-    if (upcoming.size() > maxUpcoming)
     {
-        auto yPos = upcomingStartY + maxUpcoming * upcomingRowHeight;
-        display.drawThickLine(0, yPos, display.width(), yPos, BLACK, 3);
-        auto moreSize = upcoming.size() - maxUpcoming;
-        auto meetings = moreSize == 1 ? " rezerwacja " : moreSize < 5 ? " rezerwacje "
-                                                                      : " rezerwacji ";
-        print("Jeszcze " + String(moreSize) + meetings + "dzisiaj", 20, yPos + 35, Font::ROBOTO_36);
+        auto startY = endOfFirstRow + displayedUpcoming * upcomingRowHeight;
+        display.drawThickLine(0, startY, display.width(), startY, BLACK, 3);
+        printRemainingMeetingsCount(remainingUpcoming, startY, screenHeight);
     }
 
     commit();
 }
+
 void Display::showConnectionCodeScreen(const DeviceState &device)
 {
     print("Connection Code", 0, 190, Font::ROBOTO_48, TextAlign::CENTER);
@@ -347,12 +341,16 @@ std::vector<String> Display::measureLineBreak(const String &input, Font font, in
     return result;
 }
 
-void Display::printCurrentMeeting(const DeviceState &deviceState)
+void Display::printCurrentMeeting(const DeviceState &deviceState, int startY, int endY)
 {
     auto current = deviceState.getCurrentMeeting();
 
     if (!current.is_defined)
     {
+        auto textY = startY + (endY - startY - 120) / 2;
+
+        print("Wolne", 0, textY, Font::ROBOTO_64, TextAlign::CENTER);
+        print("do " + deviceState.getNextMeeting().startTime, 0, textY + 80, Font::ROBOTO_48, TextAlign::CENTER);
         return;
     }
 
@@ -360,24 +358,44 @@ void Display::printCurrentMeeting(const DeviceState &deviceState)
 
     if (lines.size() == 1)
     {
-        print(current.summary, 20, 45, Font::ROBOTO_48, TextAlign::LEFT, false);
-        print(current.startTime + " - " + current.endTime, 20, 110, Font::ROBOTO_48);
+        auto textY = startY + (endY - startY - 115) / 2;
+        print(current.summary, 20, textY, Font::ROBOTO_48, TextAlign::CENTER, false);
+        print(current.startTime + " - " + current.endTime, 20, textY + 65, Font::ROBOTO_48, TextAlign::CENTER);
     }
     else
     {
-        print(lines[0], 20, 20, Font::ROBOTO_48, TextAlign::LEFT, false);
-        print(lines[1], 20, 75, Font::ROBOTO_48, TextAlign::LEFT, false);
-        print(current.startTime + " - " + current.endTime, 10, 140, Font::ROBOTO_48);
+        auto textY = startY + (endY - startY - 160) / 2;
+        print(lines[0], 20, textY, Font::ROBOTO_48, TextAlign::CENTER, false);
+        print(lines[1], 20, textY + 55, Font::ROBOTO_48, TextAlign::CENTER, false);
+        print(current.startTime + " - " + current.endTime, 20, textY + 120, Font::ROBOTO_48, TextAlign::CENTER);
     }
 }
 
-void Display::printNextMeeting(const MeetingData &meeting, int startY)
+void Display::printNextMeeting(const MeetingData &meeting, int startY, int endY)
 {
-    display.drawThickLine(0, startY, display.width(), startY, BLACK, 3);
+
+    auto textY = startY + (endY - startY - 80) / 2;
 
     if (meeting.is_defined)
     {
-        print(meeting.summary, 20, startY + 35, Font::ROBOTO_36, TextAlign::LEFT, false);
-        print(meeting.startTime + " - " + meeting.endTime, 20, startY + 85, Font::ROBOTO_36);
+        print(meeting.summary, 20, textY, Font::ROBOTO_36, TextAlign::CENTER, false);
+        print(meeting.startTime + " - " + meeting.endTime, 20, textY + 50, Font::ROBOTO_36, TextAlign::CENTER);
+    }
+}
+
+void Display::printRemainingMeetingsCount(int count, int startY, int endY)
+{
+    if (count > 0)
+    {
+        auto yPos = startY + (endY - startY) / 2 - 15;
+        auto meetings = count == 1 ? " rezerwacja " : count < 5 ? " rezerwacje "
+                                                                : " rezerwacji ";
+        print("Jeszcze " + String(count) + meetings + "dzisiaj", 0, yPos, Font::ROBOTO_36, TextAlign::CENTER);
+    }
+    else
+    {
+        auto textY = startY + (endY - startY) / 2 - 36;
+        print("Potem wolne", 20, textY, Font::ROBOTO_36, TextAlign::CENTER);
+        print("do konca dnia", 20, textY + 40, Font::ROBOTO_36, TextAlign::CENTER);
     }
 }

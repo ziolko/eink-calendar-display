@@ -48,8 +48,9 @@ public:
 private:
     bool hasChanges;
 
-    void printCurrentMeeting(const DeviceState &deviceState);
-    void printNextMeeting(const MeetingData &meeting, int startY);
+    void printCurrentMeeting(const DeviceState &deviceState, int startY, int endY);
+    void printNextMeeting(const MeetingData &meeting, int startY, int endY);
+    void printRemainingMeetingsCount(int count, int startY, int endY);
 
     void printOnCenter(const String &text, Font font);
     void print(const String &text, uint x, uint y, Font font = Font::ROBOTO_24, TextAlign textAlign = TextAlign::LEFT, bool wrapText = true);
