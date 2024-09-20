@@ -61,53 +61,24 @@ void showDeviceView(Display &display, DeviceState &device, bool forceShow)
 
 void setup()
 {
-    Serial.begin(115200);
     Display display;
-    RoombeltApi api;
-
-    int sleepTimeMs = -1;
-
     try
     {
-        auto wakeupCause = esp_sleep_get_wakeup_cause();
-        auto isForceRefresh = wakeupCause == ESP_SLEEP_WAKEUP_EXT0; // User pressed the "wake up" button
-        if (isForceRefresh)
+        auto battery = display.readBattery();
+        if (battery < 3.2)
         {
-            display.showRandomImage();
-        }
-        else if (wakeupCause != ESP_SLEEP_WAKEUP_TIMER)
-        {
-            showWelcomeView(display, api);
+            display.showMessageScreen("Low battery", String(battery) + "V");
+            sleep(1);
         }
 
-        auto config = display.getConfig();
-        api.connect(config.ssid, config.password);
-        auto device = getDeviceState(api);
-        sleepTimeMs = device.getMsToNextRefresh();
-
-        if (!device.isEnergySaving() || device.isOccupied())
-        {
-            showDeviceView(display, device, isForceRefresh);
-        }
-        else if (!isForceRefresh)
-        {
-            display.showRandomImage();
-        }
+        display.showRandomImage();
     }
     catch (Error error)
     {
         display.showErrorScreen(error);
     }
 
-    int ONE_MINUTE = 60 * 1000;
-    int FIVE_MINUTES = 5 * ONE_MINUTE;
-
-    if (sleepTimeMs <= 0)
-        sleepTimeMs = ONE_MINUTE;
-    else if (sleepTimeMs > FIVE_MINUTES)
-        sleepTimeMs = FIVE_MINUTES;
-
-    display.deepSleep(sleepTimeMs);
+    display.deepSleep(10 * 60 * 1000);
 }
 
 void loop()

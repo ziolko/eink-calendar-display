@@ -40,6 +40,7 @@ public:
     void showMessageScreen(const String &message, const String &secondaryMessage);
 
     void deepSleep(uint sleepTimeMs);
+    double readBattery();
 
     Config getConfig();
 

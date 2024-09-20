@@ -231,6 +231,11 @@ void Display::commit()
     hasChanges = false;
 }
 
+double Display::readBattery()
+{
+    return display.readBattery();
+}
+
 void Display::showDeviceScreen(const DeviceState &device)
 {
     print(device.getRoomName(), 10, 10, Font::ROBOTO_48);
