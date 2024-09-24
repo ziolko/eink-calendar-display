@@ -53,19 +53,33 @@ void setup()
     Display display;
     RoombeltApi api;
 
-    int sleepTimeMs = -1;
+    int sleepTimeMs = 0;
     auto battery = display.getBattery();
 
     try
     {
+        if (battery < 2.9)
+        {
+            display.deepSleep(1000 * 60 * 10);
+            return;
+        }
+
+        if (battery < 2.95)
+        {
+            display.showImage(ERROR_IMAGE, 200, 100, 200, 200);
+            display.showMessageScreen("Naladuj baterie!", "Stan baterii: " + String(battery) + "V");
+            display.deepSleep(1000 * 60 * 10);
+            return;
+        }
+
         auto wakeupCause = esp_sleep_get_wakeup_cause();
         auto isForceRefresh = wakeupCause == ESP_SLEEP_WAKEUP_EXT0; // User pressed the "wake up" button
+        auto isScheduledRefresh = wakeupCause == ESP_SLEEP_WAKEUP_TIMER;
         if (isForceRefresh)
         {
             display.showMessageScreen("Dobrze Cie widziec!", "Stan baterii: " + String(battery) + "V");
-            // display.showRandomImage();
         }
-        else if (wakeupCause != ESP_SLEEP_WAKEUP_TIMER)
+        else if (!isScheduledRefresh)
         {
             display.showMessageScreen("Dobrze Cie widziec!", "Stan baterii: " + String(battery) + "V");
         }
@@ -75,14 +89,7 @@ void setup()
         auto device = getDeviceState(api, battery);
         sleepTimeMs = device.getMsToNextRefresh();
 
-        if (!device.isEnergySaving() || device.isOccupied())
-        {
-            showDeviceView(display, device, isForceRefresh);
-        }
-        else if (!isForceRefresh)
-        {
-            display.showRandomImage();
-        }
+        showDeviceView(display, device, isForceRefresh);
     }
     catch (ErrorWifiConnection error)
     {
@@ -95,13 +102,10 @@ void setup()
         display.showErrorScreen(error);
     }
 
-    int ONE_MINUTE = 60 * 1000;
-    int FIVE_MINUTES = 5 * ONE_MINUTE;
-
     if (sleepTimeMs <= 0)
-        sleepTimeMs = ONE_MINUTE;
-    else if (sleepTimeMs > FIVE_MINUTES)
-        sleepTimeMs = FIVE_MINUTES;
+    {
+        sleepTimeMs = 1000 * 60; // One minute
+    }
 
     display.deepSleep(sleepTimeMs);
 }
