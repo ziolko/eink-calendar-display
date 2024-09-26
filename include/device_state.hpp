@@ -7,6 +7,7 @@ class MeetingData
 {
 public:
     bool is_defined;
+    bool is_all_day;
     String summary;
     String host;
     String startTime, endTime;

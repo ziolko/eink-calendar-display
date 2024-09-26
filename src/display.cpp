@@ -265,8 +265,9 @@ void Display::showDeviceScreen(const DeviceState &device)
     auto displayedUpcoming = std::min(2, (int)upcoming.size());
     auto remainingUpcoming = std::max(0, (int)upcoming.size() - displayedUpcoming);
 
-    auto endOfFirstRow = std::max(300, screenHeight / (displayedUpcoming + 2));
-    auto upcomingRowHeight = std::max(160, (screenHeight - endOfFirstRow) / (displayedUpcoming + 1));
+    auto remainingMeetingsRow = (remainingUpcoming == 0 && device.getCurrentMeeting().is_all_day) ? 0 : 1;
+    auto endOfFirstRow = std::max(300, screenHeight / (1 + displayedUpcoming + remainingMeetingsRow));
+    auto upcomingRowHeight = std::max(160, (screenHeight - endOfFirstRow) / std::max(displayedUpcoming + remainingMeetingsRow, 1));
 
     printCurrentMeeting(device, 0, endOfFirstRow);
 
@@ -277,6 +278,7 @@ void Display::showDeviceScreen(const DeviceState &device)
         printNextMeeting(upcoming[i], startY, startY + upcomingRowHeight);
     }
 
+    if (remainingMeetingsRow == 1)
     {
         auto startY = endOfFirstRow + displayedUpcoming * upcomingRowHeight;
         display.drawThickLine(0, startY, display.width(), startY, BLACK, 3);
@@ -355,19 +357,20 @@ void Display::printCurrentMeeting(const DeviceState &deviceState, int startY, in
     }
 
     auto lines = measureLineBreak(current.summary, Font::ROBOTO_48, 20);
+    auto time = current.is_all_day ? "Do konca dnia" : current.startTime + " - " + current.endTime;
 
     if (lines.size() == 1)
     {
         auto textY = startY + (endY - startY - 115) / 2;
         print(current.summary, 20, textY, Font::ROBOTO_48, TextAlign::CENTER, false);
-        print(current.startTime + " - " + current.endTime, 20, textY + 65, Font::ROBOTO_48, TextAlign::CENTER);
+        print(time, 20, textY + 65, Font::ROBOTO_48, TextAlign::CENTER);
     }
     else
     {
         auto textY = startY + (endY - startY - 160) / 2;
         print(lines[0], 20, textY, Font::ROBOTO_48, TextAlign::CENTER, false);
         print(lines[1], 20, textY + 55, Font::ROBOTO_48, TextAlign::CENTER, false);
-        print(current.startTime + " - " + current.endTime, 20, textY + 120, Font::ROBOTO_48, TextAlign::CENTER);
+        print(time, 20, textY + 120, Font::ROBOTO_48, TextAlign::CENTER);
     }
 }
 
@@ -378,8 +381,9 @@ void Display::printNextMeeting(const MeetingData &meeting, int startY, int endY)
 
     if (meeting.is_defined)
     {
+        auto time = meeting.is_all_day ? "Do konca dnia" : meeting.startTime + " - " + meeting.endTime;
         print(meeting.summary, 20, textY, Font::ROBOTO_36, TextAlign::CENTER, false);
-        print(meeting.startTime + " - " + meeting.endTime, 20, textY + 50, Font::ROBOTO_36, TextAlign::CENTER);
+        print(time, 20, textY + 50, Font::ROBOTO_36, TextAlign::CENTER);
     }
 }
 

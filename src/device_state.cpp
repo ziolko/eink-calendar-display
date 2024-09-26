@@ -101,6 +101,18 @@ MeetingData::MeetingData(const JsonVariantConst &meeting)
 
         start_timestamp = meeting["startTimestamp"];
         end_timestamp = meeting["endTimestamp"];
+
+        is_all_day = meeting["isAllDayEvent"];
+    }
+    else
+    {
+        summary = "";
+        host = "";
+        startTime = "";
+        endTime = "";
+        start_timestamp = 0;
+        end_timestamp = 0;
+        is_all_day = false;
     }
 }
 
